@@ -9,34 +9,39 @@ import Foundation
 
 class MockDataService: DataService {
 
-    // Simulating a network delay
     func fetchBusLines() async throws -> [BusLine] {
-        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-
+        try await Task.sleep(nanoseconds: 500_000_000)
         return [
-            BusLine(id: "1", number: "105", description: "Buca - Konak", routePolyline: nil),
-            BusLine(id: "2", number: "484", description: "Gaziemir - Halkapınar", routePolyline: nil),
-            BusLine(id: "3", number: "253", description: "Halkapınar - Konak", routePolyline: nil)
+            BusLine(id: "1", number: "105", name: "Buca - Konak", routeDescription: "Buca - Konak", startPoint: "Buca", endPoint: "Konak"),
+            BusLine(id: "2", number: "171", name: "Buca - Konak", routeDescription: "Buca - Konak", startPoint: "Buca", endPoint: "Konak")
+        ]
+    }
+
+    func fetchAllStops() async throws -> [BusStop] {
+        try await Task.sleep(nanoseconds: 500_000_000)
+        return [
+            BusStop(id: "10005", name: "Bahribaba", latitude: 38.4152, longitude: 27.1276, passingLines: "105-171"),
+            BusStop(id: "10030", name: "Konak", latitude: 38.4162, longitude: 27.1263, passingLines: "105")
         ]
     }
 
     func fetchStops(for line: BusLine) async throws -> [BusStop] {
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
-
-        // Return dummy stops for the requested line
-        return [
-            BusStop(id: "S1", name: "Konak Meydanı", latitude: 38.4189, longitude: 27.1287, incomingBuses: []),
-            BusStop(id: "S2", name: "Çankaya", latitude: 38.4237, longitude: 27.1354, incomingBuses: []),
-            BusStop(id: "S3", name: "Basmane Gar", latitude: 38.4285, longitude: 27.1428, incomingBuses: [])
-        ]
+        return try await fetchAllStops().filter { $0.passingLines.contains(line.number) }
     }
 
     func fetchLiveLocations(for line: BusLine) async throws -> [BusLocation] {
-        try await Task.sleep(nanoseconds: 300_000_000) // 0.3 second
+        return []
+    }
 
+    func fetchIncomingBuses(stopId: String) async throws -> [IncomingBus] {
+        try await Task.sleep(nanoseconds: 500_000_000)
         return [
-            BusLocation(id: "B1", busId: "BUS-101", lineNumber: line.number, latitude: 38.4200, longitude: 27.1300, speed: 45.0),
-            BusLocation(id: "B2", busId: "BUS-102", lineNumber: line.number, latitude: 38.4250, longitude: 27.1380, speed: 30.0)
+            IncomingBus(lineNumber: "105", remainingTime: 5, remainingStops: 2, plateNumber: "35 ESHOT 123"),
+            IncomingBus(lineNumber: "171", remainingTime: 12, remainingStops: 5, plateNumber: "35 ESHOT 456")
         ]
+    }
+
+    func fetchNearbyStops(lat: Double, lon: Double) async throws -> [BusStop] {
+        return try await fetchAllStops()
     }
 }

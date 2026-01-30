@@ -9,8 +9,13 @@ import Foundation
 
 protocol DataService {
     func fetchBusLines() async throws -> [BusLine]
-    func fetchStops(for line: BusLine) async throws -> [BusStop]
+    func fetchAllStops() async throws -> [BusStop]
+    func fetchStops(for line: BusLine) async throws -> [BusStop] // Kept for compatibility
     func fetchLiveLocations(for line: BusLine) async throws -> [BusLocation]
+
+    // New methods
+    func fetchIncomingBuses(stopId: String) async throws -> [IncomingBus]
+    func fetchNearbyStops(lat: Double, lon: Double) async throws -> [BusStop]
 }
 
 enum APIError: Error {

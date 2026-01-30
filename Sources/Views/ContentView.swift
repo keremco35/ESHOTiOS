@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = HomeViewModel()
+    @StateObject private var viewModel = HomeViewModel(useMock: false) // Use Real Data
 
     var body: some View {
         NavigationView {
@@ -19,7 +19,7 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
-                        Task { await viewModel.refreshLiveLocations() }
+                        Task { await viewModel.fetchInitialData() }
                     }) {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -27,7 +27,7 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            Task { await viewModel.fetchBusLines() }
+            Task { await viewModel.fetchInitialData() }
         }
         .sheet(isPresented: $viewModel.showMap) {
             MapView(viewModel: viewModel)
