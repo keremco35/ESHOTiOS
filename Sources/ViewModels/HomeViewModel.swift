@@ -18,11 +18,13 @@ class HomeViewModel: ObservableObject {
     @Published var selectedLine: BusLine?
     @Published var selectedStop: BusStop?
     @Published var stops: [BusStop] = []
+    @Published var allStops: [BusStop] = [] // Cache of all stops
     @Published var liveLocations: [BusLocation] = []
+    @Published var incomingBuses: [IncomingBus] = []
 
     @Published var isLoading = false
     @Published var errorMessage: String?
-    @Published var showMap = false // To toggle map view
+    @Published var showMap = false
 
     @Published var searchQuery = ""
 
@@ -33,7 +35,7 @@ class HomeViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(useMock: Bool = true) {
+    init(useMock: Bool = false) { // Default to False now to use real data
         self.dataService = useMock ? MockDataService() : APIService()
 
         setupSearchSubscription()
@@ -47,7 +49,7 @@ class HomeViewModel: ObservableObject {
             .map { query, lines in
                 if query.isEmpty { return lines }
                 return lines.filter {
-                    $0.number.contains(query) || $0.description.localizedCaseInsensitiveContains(query)
+                    $0.number.contains(query) || $0.name.localizedCaseInsensitiveContains(query)
                 }
             }
             .assign(to: &$filteredBusLines)
@@ -55,52 +57,64 @@ class HomeViewModel: ObservableObject {
 
     // MARK: - Actions
 
-    func fetchBusLines() async {
+    func fetchInitialData() async {
         isLoading = true
         errorMessage = nil
         do {
-            busLines = try await dataService.fetchBusLines()
-            // Initial filter update happens via Combine pipeline automatically
+            // Load Lines
+            async let linesTask = dataService.fetchBusLines()
+            // Load All Stops (Heavy operation, might want to cache or optimize)
+            async let stopsTask = dataService.fetchAllStops()
+
+            let (fetchedLines, fetchedStops) = try await (linesTask, stopsTask)
+
+            busLines = fetchedLines
+            allStops = fetchedStops
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Data loading error: \(error.localizedDescription)"
         }
         isLoading = false
     }
 
-    func selectLine(_ line: BusLine) async {
+    func selectLine(_ line: BusLine) {
         selectedLine = line
-        stops = []
+        selectedStop = nil
         liveLocations = []
+        incomingBuses = []
         isLoading = true
         showMap = true
 
-        // Fetch stops and locations concurrently
-        do {
-            async let fetchedStops = dataService.fetchStops(for: line)
-            async let fetchedLocations = dataService.fetchLiveLocations(for: line)
-
-            let (newStops, newLocations) = try await (fetchedStops, fetchedLocations)
-
-            stops = newStops
-            liveLocations = newLocations
-        } catch {
-            errorMessage = "Failed to load route data: \(error.localizedDescription)"
+        // Filter stops for this line from our cache
+        // The CSV format for passing lines is usually "10-20-30"
+        // We perform a local filter.
+        let targetNumber = line.number
+        stops = allStops.filter { stop in
+            let lines = stop.passingLines.components(separatedBy: "-")
+            return lines.contains(targetNumber)
         }
+
+        if stops.isEmpty {
+             errorMessage = "No stops found for this line."
+        }
+
         isLoading = false
-    }
-
-    func refreshLiveLocations() async {
-        guard let line = selectedLine else { return }
-        do {
-            liveLocations = try await dataService.fetchLiveLocations(for: line)
-        } catch {
-            // Silently fail on refresh or show a toast
-            print("Failed to refresh locations: \(error)")
-        }
     }
 
     func selectStop(_ stop: BusStop) {
         selectedStop = stop
+        fetchIncomingBuses(for: stop)
+    }
+
+    func fetchIncomingBuses(for stop: BusStop) {
+        Task {
+            do {
+                incomingBuses = try await dataService.fetchIncomingBuses(stopId: stop.id)
+            } catch {
+                print("Error fetching incoming buses: \(error)")
+                // Don't block UI, just maybe show empty
+                incomingBuses = []
+            }
+        }
     }
 
     func clearSelection() {
@@ -108,6 +122,7 @@ class HomeViewModel: ObservableObject {
         selectedStop = nil
         stops = []
         liveLocations = []
+        incomingBuses = []
         showMap = false
     }
 }

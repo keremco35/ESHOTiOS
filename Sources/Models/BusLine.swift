@@ -10,12 +10,12 @@ import Foundation
 struct BusLine: Identifiable, Codable, Hashable {
     let id: String
     let number: String
-    let description: String
-    // Routes are often complex arrays of coordinates.
-    // For simplicity in this demo, we might just store start/end points or a polyline string.
-    let routePolyline: String?
+    let name: String
+    let routeDescription: String
+    let startPoint: String
+    let endPoint: String
 
-    // Conforming to Hashable for SwiftUI Lists
+    // Conforming to Hashable
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }

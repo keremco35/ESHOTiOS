@@ -30,9 +30,6 @@ struct MapView: View {
                             .background(Color.white)
                             .clipShape(Circle())
                             .shadow(radius: 3)
-                            .onTapGesture {
-                                // Could show bus details here
-                            }
                     } else if let stop = item.busStop {
                         Image(systemName: "circle.fill")
                             .resizable()
@@ -54,8 +51,8 @@ struct MapView: View {
                 centerMapOnFirstStop()
             }
             .sheet(item: $viewModel.selectedStop) { stop in
-                StopDetailView(stop: stop)
-                    .presentationDetents([.medium, .fraction(0.3)])
+                StopDetailView(stop: stop, incomingBuses: viewModel.incomingBuses)
+                    .presentationDetents([.medium, .fraction(0.5)])
             }
 
             // Close Button Overlay
@@ -63,7 +60,7 @@ struct MapView: View {
                 HStack {
                     Spacer()
                     Button(action: {
-                        viewModel.showMap = false
+                        viewModel.clearSelection()
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 30))
@@ -95,7 +92,7 @@ struct MapView: View {
     private func centerMapOnFirstStop() {
         if let firstStop = viewModel.stops.first {
             region.center = CLLocationCoordinate2D(latitude: firstStop.latitude, longitude: firstStop.longitude)
-            region.span = MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+            region.span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
         }
     }
 
@@ -130,20 +127,26 @@ struct MapView: View {
 
 struct StopDetailView: View {
     let stop: BusStop
+    let incomingBuses: [IncomingBus]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(stop.name)
                 .font(.title2)
                 .bold()
+                .padding(.top)
+
+            Text("Stop ID: \(stop.id)")
+                .font(.caption)
+                .foregroundColor(.secondary)
 
             Divider()
 
-            if let buses = stop.incomingBuses, !buses.isEmpty {
+            if !incomingBuses.isEmpty {
                 Text("Incoming Buses")
                     .font(.headline)
 
-                List(buses) { bus in
+                List(incomingBuses) { bus in
                     HStack {
                         Text(bus.lineNumber)
                             .font(.headline)
@@ -151,20 +154,35 @@ struct StopDetailView: View {
                             .background(Color.blue.opacity(0.1))
                             .cornerRadius(8)
 
+                        VStack(alignment: .leading) {
+                            if let plate = bus.plateNumber {
+                                Text(plate).font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+
                         Spacer()
 
-                        Text("\(bus.estimatedArrival) min")
-                            .bold()
-                            .foregroundColor(.blue)
+                        if let time = bus.remainingTime {
+                            Text("\(time) min")
+                                .bold()
+                                .foregroundColor(.blue)
+                        } else {
+                            Text("Approaching")
+                                .italic()
+                        }
                     }
                 }
                 .listStyle(PlainListStyle())
             } else {
-                Text("No incoming buses info available.")
-                    .foregroundColor(.secondary)
-                Spacer()
+                VStack {
+                    Spacer()
+                    Text("No incoming buses info available.")
+                        .foregroundColor(.secondary)
+                        .padding()
+                    Spacer()
+                }
             }
         }
-        .padding()
+        .padding(.horizontal)
     }
 }
