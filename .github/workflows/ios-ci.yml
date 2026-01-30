@@ -21,8 +21,7 @@ jobs:
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      - name: Select Xcode Version
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      # Removed explicit xcode-select to rely on default environment and potentially avoid issues
 
       - name: Build App
         run: |
