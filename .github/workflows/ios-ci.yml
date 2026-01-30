@@ -25,8 +25,17 @@ jobs:
 
       - name: Build App
         run: |
+          # Find the UUID of the latest iPhone simulator
+          DEVICE_ID=$(xcrun simctl list devices available | grep "iPhone" | tail -n 1 | grep -oE '[0-9A-F-]{36}')
+          echo "Selected Simulator ID: $DEVICE_ID"
+
+          if [ -z "$DEVICE_ID" ]; then
+            echo "Error: No iPhone simulator found!"
+            exit 1
+          fi
+
           xcodebuild clean build \
             -project IzmirBusApp.xcodeproj \
             -scheme IzmirBusApp \
-            -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest' \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
             CODE_SIGNING_ALLOWED=NO
